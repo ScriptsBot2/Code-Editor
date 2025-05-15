@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Code Editor</title>
+<style>
+  body { font-family: monospace; background: #1e1e1e; color: white; margin: 0; padding: 10px; }
+  input, textarea, button { font-family: monospace; font-size: 16px; }
+  #filenameInput { width: 300px; padding: 8px; }
+  textarea { width: 100%; height: 250px; background: #111; color: #eee; margin-top: 10px; border: none; padding: 10px; resize: vertical; }
+  button { margin-top: 10px; padding: 10px 15px; background: #0066ff; border: none; color: white; cursor: pointer; }
+  #outputContainer { margin-top: 15px; background: #000; color: #0f0; padding: 10px; height: 250px; overflow-y: auto; white-space: pre-wrap; border: 1px solid #333; }
+  iframe { width: 100%; height: 250px; border: none; background: white; }
+</style>
+</head>
+<body>
+
+<h2>Code Editor</h2>
+<label>Filename: <input type="text" id="filenameInput" placeholder="e.g. index.html, script.py, code.lua, app.js" /></label>
+<button id="loadFileBtn">Load File</button>
+
+<textarea id="codeEditor" placeholder="Type your code here..."></textarea>
+
+<div>
+  <button id="runBtn">Run</button>
+  <button id="downloadBtn">Download File</button>
+</div>
+
+<div id="outputContainer"></div>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+<script src="https://unpkg.com/fengari-web/dist/fengari-web.js"></script>
+
+<script>
+  let files = {
+    "index.html": "<h1>Hello from index.html!</h1>",
+    "script.py": "print('Hello from Python!')",
+    "code.lua": "print('Hello from Lua!')",
+    "app.js": "console.log('Hello from JavaScript!');"
+  };
+
+  const filenameInput = document.getElementById('filenameInput');
+  const codeEditor = document.getElementById('codeEditor');
+  const loadFileBtn = document.getElementById('loadFileBtn');
+  const runBtn = document.getElementById('runBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const outputContainer = document.getElementById('outputContainer');
+
+  let pyodide = null;
+
+  async function loadPyodideAndPackages() {
+    outputContainer.textContent = "Loading Python environment...";
+    pyodide = await loadPyodide();
+    outputContainer.textContent = "Python environment loaded. Ready.";
+  }
+  loadPyodideAndPackages();
+
+  function saveCurrentFile() {
+    const filename = filenameInput.value.trim();
+    if (!filename) {
+      alert("Please enter a filename.");
+      return false;
+    }
+    files[filename] = codeEditor.value;
+    return true;
+  }
+
+  function loadFile(filename) {
+    if (!files[filename]) {
+      files[filename] = "";
+    }
+    codeEditor.value = files[filename];
+  }
+
+  loadFileBtn.onclick = () => {
+    const filename = filenameInput.value.trim();
+    if (!filename) {
+      alert("Enter a filename to load.");
+      return;
+    }
+    saveCurrentFile();
+    loadFile(filename);
+    outputContainer.textContent = "";
+  };
+
+  runBtn.onclick = async () => {
+    if (!saveCurrentFile()) return;
+    const filename = filenameInput.value.trim().toLowerCase();
+    const content = codeEditor.value;
+    outputContainer.textContent = "";
+
+    if (filename.endsWith('.html')) {
+      const iframe = document.createElement('iframe');
+      iframe.sandbox = "allow-scripts allow-same-origin";
+      iframe.srcdoc = content;
+      outputContainer.innerHTML = "";
+      outputContainer.appendChild(iframe);
+    } 
+    else if (filename.endsWith('.py')) {
+      if (!pyodide) {
+        outputContainer.textContent = "Python environment not ready.";
+        return;
+      }
+      try {
+        pyodide.runPython(`
+import sys
+class StdoutCatcher:
+    def __init__(self):
+        self.content = ""
+    def write(self, s):
+        self.content += s
+    def flush(self):
+        pass
+catcher = StdoutCatcher()
+sys.stdout = catcher
+sys.stderr = catcher
+`);
+        await pyodide.runPythonAsync(content);
+        let output = pyodide.runPython('catcher.content');
+        outputContainer.textContent = output || "Python script ran successfully.";
+      } catch (err) {
+        outputContainer.textContent = "Python Error:\n" + err;
+      }
+    }
+    else if (filename.endsWith('.lua')) {
+      try {
+        let output = "";
+        const luaPrint = (...args) => {
+          output += args.join(" ") + "\n";
+        };
+        fengari.load(content)({ print: luaPrint });
+        outputContainer.textContent = output || "Lua script ran successfully.";
+      } catch (err) {
+        outputContainer.textContent = "Lua Error:\n" + err;
+      }
+    }
+    else if (filename.endsWith('.js')) {
+      try {
+        let output = "";
+        const originalLog = console.log;
+        console.log = (...args) => {
+          output += args.join(" ") + "\n";
+          originalLog.apply(console, args);
+        };
+        new Function(content)();
+        console.log = originalLog;
+        outputContainer.textContent = output || "JavaScript ran successfully.";
+      } catch (err) {
+        outputContainer.textContent = "JavaScript Error:\n" + err;
+      }
+    }
+    else {
+      outputContainer.textContent = "Unsupported file type. Supported: .html, .py, .lua, .js";
+    }
+  };
+
+  downloadBtn.onclick = () => {
+    if (!saveCurrentFile()) return;
+    const filename = filenameInput.value.trim();
+    const content = codeEditor.value;
+
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+
+  filenameInput.value = "index.html";
+  loadFile("index.html");
+</script>
+
+</body>
+</html>
